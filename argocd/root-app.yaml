@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: myapp-root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  # Universal App of Apps. ArgoCD walks lab9/argocd/ and creates every
+  # Application manifest it finds — sealed-secrets, ingress-nginx, the
+  # SealedSecret bundle, and both lab8 workloads — in a single reconcile.
+  # Sync order across children is controlled by argocd.argoproj.io/sync-wave
+  # annotations on each child.
+  #
+  # Point repoURL at whatever git repo hosts this lab9/ directory.
+  source:
+    repoURL: https://github.com/mkalybek/devops2-lab9.git
+    targetRevision: main
+    path: argocd
+    directory:
+      recurse: false
+      # Pick up every Application file, but skip THIS root to avoid a self-loop.
+      include: "{00-sealed-secrets.yaml,01-ingress-nginx.yaml,02-secrets.yaml,myapp-helm.yaml,myapp-kustomize.yaml}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
